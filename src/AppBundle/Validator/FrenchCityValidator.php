@@ -17,6 +17,10 @@ class FrenchCityValidator extends ConstraintValidator
      */
     public function validate($value, Constraint $constraint)
     {
+        if (!$constraint instanceof FrenchCity) {
+            throw new UnexpectedTypeException($constraint, FrenchCity::class);
+        }
+
         if (null === $value || '' === $value) {
             return;
         }
