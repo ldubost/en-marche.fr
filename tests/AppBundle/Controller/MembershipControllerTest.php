@@ -118,12 +118,6 @@ class MembershipControllerTest extends WebTestCase
 
         $this->assertClientIsRedirectedTo('/inscription/don', $this->client);
 
-        $crawler = $this->client->followRedirect();
-
-        $this->assertContains(
-            "Votre inscription en tant qu'adhérent s'est déroulée avec succès.",
-            $crawler->filter('#notice-flashes')->text()
-        );
         $this->assertInstanceOf(
             Adherent::class,
             $adherent = $this->client->getContainer()->get('doctrine')->getRepository(Adherent::class)->findByEmail('paul@dupont.tld')

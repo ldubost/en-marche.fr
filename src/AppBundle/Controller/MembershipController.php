@@ -4,10 +4,12 @@ namespace AppBundle\Controller;
 
 use AppBundle\Entity\Adherent;
 use AppBundle\Entity\AdherentActivationToken;
+use AppBundle\Entity\CommitteeMembership;
 use AppBundle\Exception\AdherentAlreadyEnabledException;
 use AppBundle\Exception\AdherentTokenExpiredException;
 use AppBundle\Form\AdherentInterestsFormType;
 use AppBundle\Form\DonationType;
+use AppBundle\Form\MembershipChooseNearbyCommitteeType;
 use AppBundle\Form\MembershipRequestType;
 use AppBundle\Intl\UnitedNationsBundle;
 use AppBundle\Membership\MembershipRequest;
@@ -18,6 +20,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MembershipController extends Controller
 {
@@ -35,7 +39,6 @@ class MembershipController extends Controller
 
         if ($form->isSubmitted() && $form->isValid()) {
             $this->get('app.membership_request_handler')->handle($membership);
-            $this->addFlash('info', $this->get('translator')->trans('adherent.registration.success'));
 
             if ($membership->hasAdherent()) {
                 $this->get('app.membership_utils')->createRegisteringDonation($membership->getAdherent());
@@ -144,9 +147,38 @@ class MembershipController extends Controller
      * @Route("/inscription/choisir-des-comites", name="app_membership_choose_nearby_committee")
      * @Method("GET|POST")
      */
-    public function chooseNearByCommitteeAction(): Response
+    public function chooseNearByCommitteeAction(Request $request): Response
     {
-        return $this->render('membership/choose_nearby_committee.html.twig');
+        $membershipUtils = $this->get('app.membership_utils');
+
+        if (!$id = $membershipUtils->getNewAdherentId()) {
+            throw new AccessDeniedHttpException();
+        }
+
+        $manager = $this->getDoctrine()->getManager();
+
+        if (!$adherent = $manager->getRepository(Adherent::class)->find($id)) {
+            throw new NotFoundHttpException();
+        }
+
+        $form = $this->createForm(MembershipChooseNearbyCommitteeType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            foreach ($form->get('committees')->getData() as $row) {
+                $membership = CommitteeMembership::createForAdherent($adherent, $row);
+                $manager->persist($membership);
+            }
+
+            $manager->flush();
+            $this->addFlash('info', $this->get('translator')->trans('adherent.registration.success'));
+
+            return $this->redirectToRoute('app_adherent_profile');
+        }
+
+        return $this->render('membership/choose_nearby_committee.html.twig', [
+            'form' => $form->createView(),
+        ]);
     }
 
     /**

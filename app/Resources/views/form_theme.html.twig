@@ -51,3 +51,15 @@
     {# TODO to be integrated #}
     {{ form_widget(form) }}
 {% endblock %}
+
+{% block _app_membership_choose_nearby_committee_committees_row %}
+    <div>
+        {%- for child in form %}
+            <div>
+                <h5>{{ child.vars.label }}</h5>
+                {{ form_label(child, 'Je veux suivre ce comité') }}
+                {{ form_widget(child) }}
+            </div>
+        {% endfor -%}
+    </div>
+{% endblock %}
