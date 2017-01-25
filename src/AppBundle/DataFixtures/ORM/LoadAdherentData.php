@@ -22,6 +22,7 @@ class LoadAdherentData implements FixtureInterface, ContainerAwareInterface
 
     const COMMITTEE_1_UUID = '515a56c0-bde8-56ef-b90c-4745b1c93818';
     const COMMITTEE_2_UUID = '182d8586-8b05-4b70-a727-704fa701e816';
+    const COMMITTEE_3_UUID = 'b0cd0e52-a5a4-410b-bba3-37afdd326a0a';
 
     use ContainerAwareTrait;
 
@@ -166,6 +167,15 @@ class LoadAdherentData implements FixtureInterface, ContainerAwareInterface
             'city_code' => '13003-13203',
         ]);
 
+        $committee3 = $committeeFactory->createFromArray([
+            'uuid' => self::COMMITTEE_3_UUID,
+            'created_by' => (string) $adherent6->getUuid(),
+            'name' => 'En Marche Rabat',
+            'description' => "En Marche ! C'est aussi à Rabat !",
+            'country' => 'MA',
+            'postal_code' => '10000',
+        ]);
+
         // Make an adherent request a new password
         $resetPasswordToken = AdherentResetPasswordToken::generate($adherent1);
 
@@ -188,6 +198,7 @@ class LoadAdherentData implements FixtureInterface, ContainerAwareInterface
 
         $manager->persist($committee1);
         $manager->persist($committee2);
+        $manager->persist($committee3);
 
         // Make adherents join committees
         $manager->persist($committee1->approved('2017-01-03 15:18:22'));

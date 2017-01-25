@@ -21,6 +21,7 @@ class MembershipChooseNearbyCommitteeType extends AbstractType
                 'query_builder' => function (EntityRepository $er) {
                     return $er
                         ->createQueryBuilder('c')
+                        ->addOrderBy('c.id', 'desc')
                         ->setMaxResults(3)
                     ;
                 },

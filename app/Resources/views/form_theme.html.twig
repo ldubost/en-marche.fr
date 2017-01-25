@@ -53,7 +53,7 @@
 {% endblock %}
 
 {% block _app_membership_choose_nearby_committee_committees_row %}
-    <div>
+    <div {{ block('widget_container_attributes') }}>
         {%- for child in form %}
             <div>
                 <h5>{{ child.vars.label }}</h5>

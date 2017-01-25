@@ -5,6 +5,8 @@ namespace Tests\AppBundle\Controller;
 use AppBundle\DataFixtures\ORM\LoadAdherentData;
 use AppBundle\Entity\Adherent;
 use AppBundle\Entity\AdherentActivationToken;
+use AppBundle\Entity\Committee;
+use AppBundle\Entity\CommitteeMembership;
 use AppBundle\Mailjet\Message\AdherentAccountActivationMessage;
 use AppBundle\Mailjet\Message\AdherentAccountConfirmationMessage;
 use AppBundle\Repository\AdherentActivationTokenRepository;
@@ -248,7 +250,7 @@ class MembershipControllerTest extends WebTestCase
 
     public function testPinInterestsPersistsInterestsForNonActivatedAdherent()
     {
-        /* @var Adherent $adherent */
+        /** @var Adherent $adherent */
         $adherent = $this->getAdherentRepository()->findByEmail('michelle.dufour@example.ch');
 
         $this->assertFalse($adherent->isEnabled());
@@ -276,10 +278,89 @@ class MembershipControllerTest extends WebTestCase
 
         $this->assertClientIsRedirectedTo('/inscription/choisir-des-comites', $this->client);
 
-        /* @var Adherent $adherent */
+        /** @var Adherent $adherent */
         $adherent = $this->getAdherentRepository()->findByEmail('michelle.dufour@example.ch');
 
         $this->assertSame(array_values($chosenInterests), $adherent->getInterests());
+    }
+
+
+    public function testChooseNearbyCommitteeWithoutNewAdherentId()
+    {
+        $this->client->request(Request::METHOD_GET, '/inscription/choisir-des-comites');
+
+        $this->assertResponseStatusCode(Response::HTTP_NOT_FOUND, $this->client->getResponse());
+    }
+
+    public function testChooseNearbyCommitteeWithWrongNewAdherentId()
+    {
+        $this->client->getContainer()->get('session')->set(MembershipUtils::NEW_ADHERENT_ID, 'wrong id');
+        $this->client->request(Request::METHOD_GET, '/inscription/choisir-des-comites');
+
+        $this->assertResponseStatusCode(Response::HTTP_NOT_FOUND, $this->client->getResponse());
+    }
+
+    public function testChooseNearbyCommittee()
+    {
+        $this->client->getContainer()->get('session')->set(MembershipUtils::NEW_ADHERENT_ID, 1);
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/inscription/choisir-des-comites');
+
+        $this->assertResponseStatusCode(Response::HTTP_OK, $this->client->getResponse());
+
+        $checkBoxPattern = '#app_membership_choose_nearby_committee_committees > '.
+            'input[type="checkbox"][name="app_membership_choose_nearby_committee[committees][]"]';
+
+        $this->assertCount(2, $checkboxes = $crawler->filter($checkBoxPattern));
+/*
+        $interests = $this->client->getContainer()->getParameter('adherent_interests');
+        $interestsValues = array_keys($interests);
+        $interestsLabels = array_values($interests);
+
+        foreach ($checkboxes as $i => $checkbox) {
+            $this->assertSame($interestsValues[$i], $checkbox->getAttribute('value'));
+            $this->assertSame($interestsLabels[$i], $crawler->filter('label[for="app_adherent_pin_interests_interests_'.$i.'"]')->eq(0)->text());
+        }*/
+    }
+
+    public function testChooseNearbyCommitteePersistsMembershipForNonActivatedAdherent()
+    {
+        /** @var Adherent $adherent */
+        $adherent = $this->getAdherentRepository()->findByEmail('michelle.dufour@example.ch');
+
+        /** @var CommitteeMembership[] $memberships */
+        $memberships = $this->getCommitteeMembershipRepository()->findBy(['adherentUuid' => (string) $adherent->getUuid()]);
+
+        $this->assertFalse($adherent->isEnabled());
+        $this->assertCount(0, $memberships);
+
+        $this->client->getContainer()->get('session')->set(MembershipUtils::NEW_ADHERENT_ID, $adherent->getId());
+
+        $crawler = $this->client->request(Request::METHOD_GET, '/inscription/choisir-des-comites');
+
+        $this->assertResponseStatusCode(Response::HTTP_OK, $this->client->getResponse());
+
+        /** @var Committee[] $committees */
+        $committees = $this->getCommitteeRepository()->findBy([], ['id' => 'desc'], 3);
+        $this->assertCount(3, $committees, 'New adherent should have 3 committee proposals');
+
+        $chosenCommittees = [
+            $committees[1]->getId(),
+            $committees[3]->getId(),
+        ];
+
+        $this->client->submit($crawler->selectButton('app_membership_choose_nearby_committee[submit]')->form(), [
+            'app_membership_choose_nearby_committee' => [
+                'committees' => $chosenCommittees,
+            ],
+        ]);
+
+        $this->assertClientIsRedirectedTo('/', $this->client);
+
+        /** @var CommitteeMembership $memberships */
+        $memberships = $this->getCommitteeMembershipRepository()->findBy(['adherentUuid' => (string) $adherent->getUuid()]);
+
+        $this->assertSame($chosenCommittees, $memberships);
     }
 
     private static function createFormData()
