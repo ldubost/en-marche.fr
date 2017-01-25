@@ -6,7 +6,6 @@ use AppBundle\Entity\Committee;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\FormBuilderInterface;
 
 class MembershipChooseNearbyCommitteeType extends AbstractType
@@ -28,9 +27,6 @@ class MembershipChooseNearbyCommitteeType extends AbstractType
                 'choice_label' => 'name',
                 'multiple' => true,
                 'expanded' => true,
-            ])
-            ->add('submit', SubmitType::class, [
-                'label' => 'Terminer',
             ])
         ;
     }

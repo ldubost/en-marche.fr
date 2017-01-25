@@ -20,8 +20,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MembershipController extends Controller
 {
@@ -152,22 +150,24 @@ class MembershipController extends Controller
         $membershipUtils = $this->get('app.membership_utils');
 
         if (!$id = $membershipUtils->getNewAdherentId()) {
-            throw new AccessDeniedHttpException();
+            throw $this->createNotFoundException('The adherent has not been successfully redirected from the registration page.');
         }
 
         $manager = $this->getDoctrine()->getManager();
 
         if (!$adherent = $manager->getRepository(Adherent::class)->find($id)) {
-            throw new NotFoundHttpException();
+            throw $this->createNotFoundException('New adherent id not found.');
         }
 
-        $form = $this->createForm(MembershipChooseNearbyCommitteeType::class);
+        $form = $this->createForm(MembershipChooseNearbyCommitteeType::class)
+            ->add('submit', SubmitType::class, ['label' => 'Terminer'])
+        ;
+
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             foreach ($form->get('committees')->getData() as $row) {
-                $membership = CommitteeMembership::createForAdherent($adherent, $row);
-                $manager->persist($membership);
+                $manager->persist(CommitteeMembership::createForAdherent($adherent, $row));
             }
 
             $manager->flush();
